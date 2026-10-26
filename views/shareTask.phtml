@@ -1,0 +1,197 @@
+<?php
+require_once('models/Task.php');
+require_once('models/User.php');
+require_once('db.php');
+
+// Solo permitir acceso con sesión y por POST
+if (!isset($_SESSION['user']) || !isset($_POST['task_id'])) {
+    header("Location: index.php");
+    exit;
+}
+
+$taskId = $_POST['task_id'];
+$task = Task::getTaskById($taskId);
+
+// Si la tarea no existe o el dueño no es el usuario actual, redirigir a inicio
+if (!$task || $task->getUser_id() != $_SESSION['user']->getId()) {
+    header("Location: index.php");
+    exit;
+}
+
+// Procesar añadir/quitar accesos exclusivamente por POST
+if (isset($_POST['modAcces']) && isset($_POST['user_id'])) {
+    if ($_POST['modAcces'] == 'add') {
+        Task::shareTask($_POST['user_id'], $taskId);
+    }
+    if ($_POST['modAcces'] == 'remove') {
+        Task::unshareTask($_POST['user_id'], $taskId);
+    }
+}
+
+// Obtener listas de usuarios actualizadas tras procesar cualquier acción
+$usersWithAccess = Task::getUsersWithAccess($taskId);
+$usersWithoutAccess = Task::getUsersWithOutAccess($taskId, $_SESSION['user']->getId());
+?>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compartir Tarea</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 15px;
+            background-color: #f9f9f9;
+            color: #222;
+        }
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            color: #222;
+        }
+        /*Contenedor a 2 columnas*/
+        .share-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .column {
+            flex: 1;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        /*Color de las columnas*/
+        .has-access {
+            background-color: #e8f5e9;
+            border: 2px solid #30e036ff;
+        }
+
+        .no-access {
+            background-color: #e3f2fd;
+            border: 2px solid #38a5ffff;
+        }
+
+        /*Color de los botones*/
+        .btn-remove {
+            background-color: #e53935;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .btn-add {
+            background-color: #43a047;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        /*Quitar estilo de enlace en los botones*/
+        .btn-remove a,
+        .btn-add a {
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        /*Lista simple*/
+        .user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .user-item form {
+            margin: 0;
+        }
+
+        /*MODO OSCURO*/
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #e0e0e0;
+            }
+            button {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+                border-color: #444;
+            }
+            .has-access {
+                background-color: #12301c;
+                border-color: #2e8b45;
+            }
+            .no-access {
+                background-color: #14283c;
+                border-color: #2b6fa8;
+            }
+            .user-item {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.php"><button>Volver a la página principal</button></a>
+    <h1>Tarea: <?php echo $task->getTitle(); ?></h1>
+    <h2>Creador: <?php echo User::getUserById($task->getUser_id())->getName(); ?></h2>
+
+    <div class="share-container">
+        <!-- Columna 1: Con Acceso -->
+        <div class="column has-access">
+            <h2>Usuarios con acceso</h2>
+            <ul class="user-list">
+                <?php foreach ($usersWithAccess as $user) {
+                    echo '<li class="user-item">';
+                    echo '<span>' . $user->getName() . '</span>';
+                    echo '<form action="index.php?controller=views&view=shareTask" method="post">';
+                    echo '<input type="hidden" name="task_id" value="' . $taskId . '">';
+                    echo '<input type="hidden" name="user_id" value="' . $user->getId() . '">';
+                    echo '<input type="hidden" name="modAcces" value="remove">';
+                    echo '<input type="submit" class="btn-remove" value="Quitar">';
+                    echo '</form>';
+                    echo '</li>';
+                } ?>
+            </ul>
+        </div>
+
+        <!-- Columna 2: Sin Acceso -->
+        <div class="column no-access">
+            <h2>Usuarios sin acceso</h2>
+            <ul class="user-list">
+                <?php foreach ($usersWithoutAccess as $user) {
+                    echo '<li class="user-item">';
+                    echo '<span>' . $user->getName() . '</span>';
+                    echo '<form action="index.php?controller=views&view=shareTask" method="post">';
+                    echo '<input type="hidden" name="task_id" value="' . $taskId . '">';
+                    echo '<input type="hidden" name="user_id" value="' . $user->getId() . '">';
+                    echo '<input type="hidden" name="modAcces" value="add">';
+                    echo '<input type="submit" class="btn-add" value="Añadir">';
+                    echo '</form>';
+                    echo '</li>';
+                } ?>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

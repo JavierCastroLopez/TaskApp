@@ -1,0 +1,77 @@
+<?php
+if (!isset($_SESSION['user'])) {
+    header("Location: index.php");
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Tarea</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 0 15px;
+            background-color: #f9f9f9;
+            color: #222;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input, select, button {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #222;
+        }
+        button, input[type="submit"] {
+            cursor: pointer;
+        }
+        a {
+            color: #0066cc;
+        }
+
+        /*MODO OSCURO*/
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #e0e0e0;
+            }
+            input, select, button {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+                border-color: #444;
+            }
+            a {
+                color: #4da3ff;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Crear Tarea</h1>
+    <form action="index.php?controller=task" method="post">
+        <label for="title">Titulo</label>
+        <input type="text" name="title" id="title" required>
+        <label for="description">Descripción</label>
+        <input type="text" name="description" id="description" required>
+        <label for="priority">Prioridad</label>
+        <select name="priority" id="priority">
+            <option value="baja">Baja</option>
+            <option value="media">Media</option>
+            <option value="alta">Alta</option>
+        </select>
+        <label for="due_date">Fecha de vencimiento</label>
+        <input type="date" name="due_date" id="due_date" required>
+        <input type="submit" name="makeTask" value="makeTask">
+    </form>
+    <p>Volver a la página principal <a href="index.php">Volver</a></p>
+</body>
+</html>

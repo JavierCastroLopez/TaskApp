@@ -1,0 +1,203 @@
+<?php
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista principal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 15px;
+            background-color: #f9f9f9;
+            color: #222;
+        }
+        input, select, button {
+            padding: 6px 10px;
+            margin: 4px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #222;
+        }
+        button, input[type="submit"] {
+            cursor: pointer;
+        }
+        a {
+            color: #0066cc;
+        }
+        .task-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .task-actions form {
+            margin: 0;
+        }
+        .tag-badge {
+            display: inline-block;
+            background-color: #e0f2fe;
+            color: #0284c7;
+            border: 1px solid #7dd3fc;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+            font-weight: 500;
+        }
+
+        /*MODO OSCURO*/
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #e0e0e0;
+            }
+            input, select, button {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+                border-color: #444;
+            }
+            a {
+                color: #4da3ff;
+            }
+            .tag-badge {
+                background-color: #10334e;
+                color: #63c2ff;
+                border-color: #1e5a87;
+            }
+            hr {
+                border-color: #333;
+            }
+        }
+    </style>
+</head>
+<body>
+    <?php
+    if (isset($_SESSION['user'])){
+        ?>
+        <a href="index.php?controller=user&logout"><button>Cerrar Sesión</button></a>
+        <h1>Bienvenido <?php echo $_SESSION['user']->getName(); ?></h1>
+        <a href="index.php?controller=views&view=makeTask"><button>Crear tarea</button></a>
+        <h1>Tus tareas:</h1>
+        <form method="post">
+            <select name="priority">
+                <option value="all" <?= (isset($_POST['priority']) && $_POST['priority'] == 'all') ? 'selected' : '' ?>>Prioridad</option>
+                <option value="baja" <?= (isset($_POST['priority']) && $_POST['priority'] == 'baja') ? 'selected' : '' ?>>Baja</option>
+                <option value="media" <?= (isset($_POST['priority']) && $_POST['priority'] == 'media') ? 'selected' : '' ?>>Media</option>
+                <option value="alta" <?= (isset($_POST['priority']) && $_POST['priority'] == 'alta') ? 'selected' : '' ?>>Alta</option>
+            </select>
+
+            <select name="state">
+                <option value="all" <?= (isset($_POST['state']) && $_POST['state'] == 'all') ? 'selected' : '' ?>>Estado</option>
+                <option value="0" <?= (isset($_POST['state']) && $_POST['state'] == '0') ? 'selected' : '' ?>>Pendientes</option>
+                <option value="1" <?= (isset($_POST['state']) && $_POST['state'] == '1') ? 'selected' : '' ?>>Completadas</option>
+            </select>
+            <select name="tag">
+                <option value="all" <?= (!isset($_POST['tag']) || $_POST['tag'] == 'all') ? 'selected' : '' ?>>Todas las etiquetas</option>
+                <?php 
+                $allSystemTags = Tag::getAllTags();
+                foreach ($allSystemTags as $sysTag): ?>
+                    <option value="<?= $sysTag->getId() ?>" <?= (isset($_POST['tag']) && $_POST['tag'] == $sysTag->getId()) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($sysTag->getName()) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <input type="submit" name="filterTask" value="Filtrar">
+        </form>
+        <?php if (isset($_POST['filterTask'])){
+            echo'<a href="index.php"><button>Quitar Filtro</button></a>';
+        } ?>
+        <?php
+
+        $tasks = $_SESSION['user']->getTask();
+        $shareTasks = Task::getShareTasks($_SESSION['user']->getId());
+        foreach($shareTasks as $t){
+            $t->setIsShared(true);
+        }
+        $allTasks = array_merge($tasks, $shareTasks);
+
+        if(isset($_POST['filterTask'])){
+            $allTasks = Task::filterTask($allTasks, $_POST['priority'], $_POST['state'], $_POST['tag'] ?? 'all');
+        }
+        
+        if (count($allTasks) == 0) {
+            if (isset($_POST['filterTask'])){
+                echo "<p>No tienes tareas que coincidan con la busqueda</p>";
+            } else{
+                echo "<p>No tienes tareas</p>";
+            }
+        } else {
+            echo"<br><hr>";
+            foreach ($allTasks as $task) {
+                echo "<h2>" . $task->getTitle() . "</h2>";
+                if($task->isShared()){
+                    echo "<h3>Compartida por: " .User::getUserById($task->getUser_id())->getName()."</h3>";
+                }
+                echo "<p>Descripción: " . $task->getDescription() . "</p>";
+                echo "<p><b>Prioridad: " . $task->getPriority() . "</b></p>";
+                echo "<p>Estado: "; 
+                if ($task->getState()==0){
+                    echo "Pendiente";
+                }else{
+                    echo "Completada";
+                } 
+                echo "</p>";
+                echo "<p>Fecha de vencimiento: " . $task->getDue_date() . "</p>";
+                echo "<p>Fecha de creación: " . $task->getCreate_date() . "</p>";
+                
+                $taskTags = $task->getTags();
+                echo "<p><b>Etiquetas: </b>";
+                if (!empty($taskTags)) {
+                    foreach ($taskTags as $t) {
+                        echo "<span class='tag-badge'>" . htmlspecialchars($t->getName()) . "</span> ";
+                    }
+                } else {
+                    echo "<em>Sin etiquetas</em>";
+                }
+                echo "</p>";
+                echo "<div class='task-actions'>";
+                echo "<form action='index.php?controller=views&view=editTask' method='post'>
+                        <input type='hidden' name='task_id' value='{$task->getId()}'>
+                        <input type='submit' name='editTask' value='Editar'>
+                      </form>";
+                if ($task->getState()==0){
+                    echo "<form action='index.php?controller=task' method='post'>
+                        <input type='hidden' name='task_id' value='{$task->getId()}'>
+                        <input type='submit' name='finishTask' value='Finalizar'>
+                      </form>";
+                }else{
+                    echo "<form action='index.php?controller=task' method='post'>
+                        <input type='hidden' name='task_id' value='{$task->getId()}'>
+                        <input type='submit' name='restartTask' value='Reanudar'>
+                      </form>";          
+                }
+                echo "<form action='index.php?controller=views&view=TagTask' method='post'>
+                        <input type='hidden' name='task_id' value='{$task->getId()}'>
+                        <input type='submit' name='editTask' value='Etiquetas'>
+                      </form>";
+                if(!$task->isShared()){
+                    echo "<form action='index.php?controller=task' method='post'>
+                        <input type='hidden' name='task_id' value='{$task->getId()}'>
+                        <input type='submit' name='deleteTask' value='Eliminar'>
+                      </form>";
+                    echo "<form action='index.php?controller=views&view=shareTask' method='post'>
+                        <input type='hidden' name='task_id' value='{$task->getId()}'>
+                        <input type='submit' name='shareTask' value='Compartir'>
+                      </form>";
+                }
+                echo "</div>";
+                echo "<hr>";
+            }
+        }
+    }else{
+    ?>
+    <a href="index.php?controller=views&view=login"><button>Iniciar Sesión</button></a>
+    <a href="index.php?controller=views&view=register"><button>Registrarse</button></a>
+    <?php }
+    ?>
+</body>
+</html>

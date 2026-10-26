@@ -1,0 +1,83 @@
+<?php
+if(!isset($_SESSION['user'])||!isset($_POST['task_id'])){
+    header("Location: index.php");
+    exit;
+}
+$task = Task::getTaskById($_POST['task_id']);
+if(!$task){
+    header("Location: index.php");
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Tarea</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 0 15px;
+            background-color: #f9f9f9;
+            color: #222;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input, select, button {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #222;
+        }
+        button, input[type="submit"] {
+            cursor: pointer;
+        }
+        a {
+            color: #0066cc;
+        }
+
+        /*MODO OSCURO*/
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #e0e0e0;
+            }
+            input, select, button {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+                border-color: #444;
+            }
+            a {
+                color: #4da3ff;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Editar Tarea</h1>
+    <form action="index.php?controller=task" method="post">
+        <label for="title">Titulo</label>
+        <input type="text" name="title" id="title" required value="<?php echo $task->getTitle(); ?>">
+        <label for="description">Descripción</label>
+        <input type="text" name="description" id="description" required value="<?php echo $task->getDescription(); ?>">
+        <label for="priority">Prioridad</label>
+        <select name="priority" id="priority">
+            <option value="baja" <?php if($task->getPriority() == 'baja') echo 'selected'; ?>>Baja</option>
+            <option value="media" <?php if($task->getPriority() == 'media') echo 'selected'; ?>>Media</option>
+            <option value="alta" <?php if($task->getPriority() == 'alta') echo 'selected'; ?>>Alta</option>
+        </select>
+        <label for="due_date">Fecha de vencimiento</label>
+        <input type="date" name="due_date" id="due_date" required value="<?php echo $task->getDue_date(); ?>">
+        <input type="hidden" name="task_id" value="<?php echo $task->getId(); ?>">
+        <input type="submit" name="editTask" value="Editar">
+    </form>
+    <p>Volver a la página principal <a href="index.php">Volver</a></p>
+</body>
+</html>
